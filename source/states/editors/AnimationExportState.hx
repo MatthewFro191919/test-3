@@ -1,4 +1,3 @@
-
 package states.editors;
 
 import flixel.FlxState;
