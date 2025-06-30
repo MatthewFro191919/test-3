@@ -4,16 +4,14 @@ package states.editors;
 import flixel.FlxState;
 import flixel.FlxG;
 import flixel.text.FlxText;
-import flixel.FlxSprite;
-import flixel.ui.FlxButton;
 import flixel.util.FlxColor;
-import backend.Paths;
-import flixel.FlxObject;
-import flixel.FlxCamera;
-import flixel.FlxSubState;
-
-import flixel.system.FlxAssets;
-import flixel.FlxScreenshot;
+import flixel.FlxSprite;
+import openfl.display.BitmapData;
+import openfl.display.PNGEncoderOptions;
+import openfl.geom.Matrix;
+import openfl.utils.ByteArray;
+import sys.io.File;
+import sys.FileSystem;
 
 class AnimationExportState extends FlxState
 {
@@ -21,7 +19,7 @@ class AnimationExportState extends FlxState
     {
         super.create();
 
-        var label = new FlxText(0, 20, FlxG.width, "Press [1] to export BF, [2] for Dad, [3] for both", 20);
+        var label = new FlxText(0, 20, FlxG.width, "Export Frames (1=BF, 2=DAD, 3=Both)", 20);
         label.setFormat(null, 20, FlxColor.WHITE, "center");
         add(label);
     }
@@ -50,20 +48,49 @@ class AnimationExportState extends FlxState
             return;
         }
 
-        var basePath = "mods/images/characters/exported_frames/";
         var label = char.curCharacter;
+        var basePath = "mods/images/characters/exported_frames/";
+        if (!FileSystem.exists(basePath))
+            FileSystem.createDirectory(basePath);
+
         for (anim in char.animation._animations.keys())
         {
-            var frames = char.animation._animations.get(anim).numFrames;
-            for (i in 0...frames)
+            var animObj = char.animation._animations.get(anim);
+            var totalFrames = animObj.numFrames;
+
+            for (i in 0...totalFrames)
             {
                 char.playAnim(anim, true);
                 char.animation.curAnim.curFrame = i;
-                var fullPath = basePath + label + "/" + anim + "/";
-                sys.FileSystem.createDirectory(fullPath);
-                var output = fullPath + "frame" + i + ".png";
-                FlxScreenshot.takeScreenshot(output);
-                FlxG.log.add("Exported " + output);
+
+                // Force redraw
+                char.updateHitbox();
+                FlxG.game.stage.invalidate();
+
+                // Wait a frame (simulate render delay)
+                FlxG.camera.drawFX();
+                FlxG.camera.draw();
+
+                var bmp:BitmapData = new BitmapData(Math.ceil(char.frameWidth), Math.ceil(char.frameHeight), true, 0x00000000);
+                var mtx = new Matrix();
+                mtx.translate(-char.offset.x, -char.offset.y);
+                bmp.draw(char, mtx);
+
+                var exportPath = basePath + label + "/" + anim + "/";
+                if (!FileSystem.exists(exportPath))
+                    FileSystem.createDirectory(exportPath);
+
+                var filePath = exportPath + "frame" + i + ".png";
+
+                try {
+                    var png:ByteArray = bmp.encode(bmp.rect, new PNGEncoderOptions());
+                    File.saveBytes(filePath, png);
+                    trace("✅ Saved " + filePath);
+                }
+                catch (e)
+                {
+                    trace("⚠️ Failed to export frame " + i + " of " + anim + " for " + label + ": " + e.message);
+                }
             }
         }
     }
