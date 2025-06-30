@@ -2,12 +2,9 @@ package states.editors;
 
 import flixel.FlxState;
 import flixel.FlxG;
-import flixel.FlxSprite;
-import flixel.group.FlxGroup;
-import flixel.ui.FlxButton;
 import flixel.text.FlxText;
+import flixel.ui.FlxButton;
 import flixel.util.FlxColor;
-
 import openfl.display.BitmapData;
 import openfl.display.PNGEncoderOptions;
 import openfl.geom.Matrix;
@@ -15,92 +12,130 @@ import openfl.utils.ByteArray;
 import sys.io.File;
 import sys.FileSystem;
 
-import backend.Paths;
-import states.editors.CharacterEditorState;
+// IMPORTANT: Import CharacterEditorState using the corrected path:
+import states.editors.CharacterEditorState; 
+
+// Also, import the character class (adjust the package as per your project)
+// For this example, we'll assume it's in objects.Character:
+import objects.Character;
 
 class AnimationExportState extends FlxState
 {
     var characterList:Array<String> = [];
-    var buttonGroup:FlxGroup;
-    var instructions:FlxText;
-
+    
     override public function create():Void
     {
         super.create();
 
-        instructions = new FlxText(0, 20, FlxG.width, "Select a character to export", 20);
+        var instructions = new FlxText(0, 20, FlxG.width, "Select a character to export", 20);
         instructions.setFormat(null, 20, FlxColor.WHITE, "center");
         add(instructions);
 
-        buttonGroup = new FlxGroup();
-        add(buttonGroup);
-
-        characterList = Paths.listFiles("mods/", true, [".json"], function(path) return path.contains("characters") && !path.contains("dead"));
-
-        var yPos:Float = 60;
-        for (filePath in characterList)
+        // Manually build a list of character names from the folder "mods/characters/"
+        characterList = [];
+        var charDir:String = "mods/characters/";
+        if (FileSystem.exists(charDir))
         {
-            var name = filePath.split("/").pop().replace(".json", "");
-            var btn = new FlxButton(50, yPos, name, function() exportCharacter(name));
+            var files:Array<String> = FileSystem.readDirectory(charDir);
+            for (file in files)
+            {
+                // Expect character JSON files; ignore files with "-dead" in their name.
+                if (file.endsWith(".json") && !file.contains("-dead"))
+                {
+                    var parts = file.split("/");
+                    var jsonFile = parts[parts.length - 1];
+                    var charName = jsonFile.split(".")[0];
+                    characterList.push(charName);
+                }
+            }
+        }
+        
+        // Create a button for each found character.
+        var yPos:Float = 60;
+        for (charName in characterList)
+        {
+            // Create a button with the character's name.
+            // The button's callback receives the character name.
+            var btn = new FlxButton(50, yPos, charName, function(name:String) {
+                exportCharacter(name);
+            }, [charName]);
             btn.color = FlxColor.GRAY;
             btn.label.color = FlxColor.WHITE;
-            buttonGroup.add(btn);
+            add(btn);
             yPos += 40;
         }
     }
 
     function exportCharacter(charName:String):Void
     {
-        var tempChar = new CharacterEditorState().loadCharFromFile(charName);
+        // Instead of loadCharFromFile (which does not exist), create a new character and load its JSON.
+        // Adjust the following to use your mod’s method of loading a character.
+        var tempChar = new Character(0, 0);
+        // Assumes that the character JSON file is located at "mods/characters/{charName}.json"
+        tempChar.setCharacterFromJson("mods/characters/" + charName + ".json", charName);
         if (tempChar == null)
         {
             trace("❌ Failed to load character: " + charName);
             return;
         }
 
-        var label = charName;
-        var basePath = "exported_frames/";
+        // Set the base export path at the root of the game (where the EXE is located)
+        var basePath:String = "exported_frames/";
         if (!FileSystem.exists(basePath))
             FileSystem.createDirectory(basePath);
 
-        for (anim in tempChar.animation.getNameList())
+        // Export each animation’s frames.
+        // Use the public API to get the list of animation names.
+        var animNames:Array<String> = cast tempChar.animation.getNameList();
+        for (anim in animNames)
         {
-            var totalFrames = tempChar.animation.getByName(anim).numFrames;
+            var animObj = tempChar.animation.getByName(anim);
+            var totalFrames:Int = animObj.numFrames;
 
             for (i in 0...totalFrames)
             {
                 tempChar.playAnim(anim, true);
                 tempChar.animation.curAnim.curFrame = i;
-
                 tempChar.updateHitbox();
 
+                // Create a BitmapData of the character's dimensions.
                 var bmp:BitmapData = new BitmapData(Math.ceil(tempChar.width), Math.ceil(tempChar.height), true, 0x00000000);
-                var mtx = new Matrix();
+                var mtx:Matrix = new Matrix();
                 mtx.translate(-tempChar.offset.x, -tempChar.offset.y);
 
                 try {
                     bmp.draw(tempChar.pixels, mtx);
-                } catch (e) {
-                    trace("⚠️ draw() failed: " + e.message);
+                } catch (e:Dynamic) {
+                    trace("⚠️ draw() failed for frame " + i + " of " + anim + ": " + e);
                     continue;
                 }
 
-                var exportPath = basePath + label + "/" + anim + "/";
+                var exportPath:String = basePath + charName + "/" + anim + "/";
                 if (!FileSystem.exists(exportPath))
                     FileSystem.createDirectory(exportPath);
 
-                var filePath = exportPath + "frame" + i + ".png";
-
+                var filePath:String = exportPath + "frame" + i + ".png";
                 try {
                     var png:ByteArray = bmp.encode(bmp.rect, new PNGEncoderOptions());
                     File.saveBytes(filePath, png);
                     trace("✅ Saved " + filePath);
                 }
-                catch (e)
-                {
-                    trace("⚠️ Failed to export frame " + i + " of " + anim + " for " + label + ": " + e.message);
+                catch (e:Dynamic) {
+                    trace("⚠️ Failed to export frame " + i + " of " + anim + " for " + charName + ": " + e);
                 }
             }
         }
     }
 }
+"""
+
+with zipfile.ZipFile(cross_platform_zip, 'w') as zipf:
+    zipf.writestr("source/states/editors/AnimationExportState.hx", fixed_animation_export_code = animation_export_charpicker_code.replace("exported_frames/", "exported_frames/")) 
+    zipf.writestr("source/states/editors/AnimationExportState.hx", animation_export_charpicker_code)  // (ignore this line)
+    zipf.writestr("source/states/editors/AnimationExportState.hx", animation_export_charpicker_code) 
+    zipf.writestr("README.txt", "Place AnimationExportState.hx in source/states/editors/\nUpdate MasterEditorMenu.hx to include:\nimport states.editors.AnimationExportState;\naddEditorOption(\"Animation Exporter\", AnimationExportState);\nExports will be saved to exported_frames/{character}/{animation}/ in the game root.")
+    
+var exportStateZipPath = "AnimationExportState_charpicker_root.zip"; // placeholder
+
+// Write to zip (simulate)
+cross_platform_zip
