@@ -21,6 +21,8 @@ import objects.Character;
 
 class AnimationExportState extends FlxState
 {
+    var exportStateZipPath = "AnimationExportState_charpicker_root.zip"; // placeholder
+    
     var characterList:Array<String> = [];
     
     override public function create():Void
@@ -127,9 +129,3 @@ class AnimationExportState extends FlxState
         }
     }
 }
-    zipf.writestr("source/states/editors/AnimationExportState.hx", fixed_animation_export_code = animation_export_charpicker_code.replace("exported_frames/", "exported_frames/")) 
-    zipf.writestr("source/states/editors/AnimationExportState.hx", animation_export_charpicker_code)  // (ignore this line)
-    zipf.writestr("source/states/editors/AnimationExportState.hx", animation_export_charpicker_code) 
-    zipf.writestr("README.txt", "Place AnimationExportState.hx in source/states/editors/\nUpdate MasterEditorMenu.hx to include:\nimport states.editors.AnimationExportState;\naddEditorOption(\"Animation Exporter\", AnimationExportState);\nExports will be saved to exported_frames/{character}/{animation}/ in the game root.")
-    
-var exportStateZipPath = "AnimationExportState_charpicker_root.zip"; // placeholder
