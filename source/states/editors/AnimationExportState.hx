@@ -16,7 +16,7 @@ import sys.io.File;
 import sys.FileSystem;
 
 import backend.Paths;
-import editors.CharacterEditorState;
+import states.editors.CharacterEditorState;
 
 class AnimationExportState extends FlxState
 {
