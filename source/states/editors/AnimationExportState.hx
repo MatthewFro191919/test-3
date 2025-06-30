@@ -7,9 +7,7 @@ import flixel.text.FlxText;
 import flixel.ui.FlxButton;
 import flixel.util.FlxColor;
 import flixel.FlxSprite;
-import flixel.FlxObject;
 import flixel.input.keyboard.FlxKey;
-import flixel.FlxSubState;
 
 import haxe.Json;
 import sys.io.File;
@@ -19,20 +17,22 @@ import openfl.geom.Rectangle;
 import openfl.geom.Point;
 import openfl.display.PNGEncoderOptions;
 import openfl.utils.ByteArray;
+import lime.utils.Assets;
+import backend.Paths;
 
 class AnimationExportState extends FlxState
 {
     var jsonPathAnim = "mods/images/characters/Animation.json";
     var jsonPathMap = "mods/images/characters/spritemap1.json";
-    var imagePath = "mods/images/characters/spritemap1.png";
+    var imagePath = "characters/spritemap1";
     var outputPath = "exported_frames/atlas_character/";
 
     override public function create():Void
     {
         super.create();
 
-        var instructions = new FlxText(0, 20, FlxG.width, "Press ESC or click to exit
-Using Animation.json and spritemap1.json", 16);
+        var instructions = new FlxText(0, 20, FlxG.width, "Press ESC or click Exit
+Exports Animation.json + spritemap1.json", 16);
         instructions.setFormat(null, 16, FlxColor.WHITE, "center");
         add(instructions);
 
@@ -53,13 +53,13 @@ Using Animation.json and spritemap1.json", 16);
 
     function exportFromAtlas():Void
     {
-        if (!FileSystem.exists(jsonPathMap) || !FileSystem.exists(jsonPathAnim) || !FileSystem.exists(imagePath))
+        if (!FileSystem.exists(jsonPathMap) || !FileSystem.exists(jsonPathAnim))
         {
-            trace("Required files not found.");
+            trace("Required metadata files not found.");
             return;
         }
 
-        var image = BitmapData.load(imagePath);
+        var image = Paths.getImage(imagePath);
         var mapData:Dynamic = Json.parse(File.getContent(jsonPathMap));
         var animData:Dynamic = Json.parse(File.getContent(jsonPathAnim));
 
@@ -69,7 +69,8 @@ Using Animation.json and spritemap1.json", 16);
             return;
         }
 
-        for (symbol in animData.symbols)
+        var symbols:Array<Dynamic> = cast animData.symbols;
+        for (symbol in symbols)
         {
             var symbolName:String = symbol.symbolName;
             var layer = symbol.layers[0];
@@ -78,7 +79,7 @@ Using Animation.json and spritemap1.json", 16);
             for (i in 0...frameCount)
             {
                 var frameName:String = layer.frames[i].ref;
-                var frameInfo = mapData.frames[frameName];
+                var frameInfo = Reflect.field(mapData.frames, frameName);
                 if (frameInfo == null) continue;
 
                 var x = frameInfo.frame.x;
@@ -94,7 +95,7 @@ Using Animation.json and spritemap1.json", 16);
                 var filePath = exportDir + "frame" + i + ".png";
                 var png:ByteArray = frameBmp.encode(frameBmp.rect, new PNGEncoderOptions());
                 File.saveBytes(filePath, png);
-                trace("Exported: " + filePath);
+                trace("✅ Exported: " + filePath);
             }
         }
     }
